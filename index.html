@@ -1452,34 +1452,59 @@ function delay(ms) {
 /* --------------------------------
    PWA SERVICE WORKER
 -------------------------------- */
+/* --------------------------------
+   PWA / CACHE RESET
+-------------------------------- */
 
 if ("serviceWorker" in navigator) {
 
-  window.addEventListener("load", () => {
+  navigator.serviceWorker
+    .getRegistrations()
+    .then(registrations => {
 
-    navigator.serviceWorker
-  .register("./sw.js?v=6")
-      .then(registration => {
+      registrations.forEach(
+        registration => {
+          registration.unregister();
+        }
+      );
 
-        console.log(
-          "JARVIS service worker active:",
-          registration.scope
-        );
-
-      })
-      .catch(error => {
-
-        console.error(
-          "JARVIS service worker failed:",
-          error
-        );
-
-      });
-
-  });
+    })
+    .catch(error => {
+      console.log(
+        "Service worker cleanup:",
+        error
+      );
+    });
 
 }
-<script>
+
+
+if ("caches" in window) {
+
+  caches.keys()
+    .then(cacheNames => {
+
+      return Promise.all(
+        cacheNames.map(
+          cacheName =>
+            caches.delete(cacheName)
+        )
+      );
+
+    })
+    .catch(error => {
+      console.log(
+        "Cache cleanup:",
+        error
+      );
+    });
+
+}
+
+
+/* --------------------------------
+   JARVIS LOCAL BRAIN
+-------------------------------- */
 
 let jarvisBrainWorker = null;
 
@@ -1497,13 +1522,26 @@ function initializeJarvisBrain() {
     return;
   }
 
-  jarvisBrainWorker =
-    new Worker(
-      "./brain-worker.js",
-      {
-        type: "module"
-      }
+  try {
+
+    jarvisBrainWorker =
+      new Worker(
+        "./brain-worker.js?v=8",
+        {
+          type: "module"
+        }
+      );
+
+  } catch (error) {
+
+    console.error(
+      "Unable to create JARVIS brain worker:",
+      error
     );
+
+    throw error;
+
+  }
 
 
   jarvisBrainWorker.onmessage =
@@ -1512,6 +1550,8 @@ function initializeJarvisBrain() {
       const data =
         event.data || {};
 
+
+      /* MODEL DOWNLOAD PROGRESS */
 
       if (
         data.type === "progress"
@@ -1527,11 +1567,13 @@ function initializeJarvisBrain() {
 
         systemLabel.textContent =
           percent !== null
-            ? `LOCAL AI ${percent}%`
-            : "INITIALIZING LOCAL AI";
+            ? `LOCAL BRAIN ${percent}%`
+            : "INITIALIZING LOCAL BRAIN";
 
       }
 
+
+      /* BRAIN READY */
 
       if (
         data.type === "ready"
@@ -1548,12 +1590,13 @@ function initializeJarvisBrain() {
       }
 
 
+      /* RESPONSE */
+
       if (
         data.type === "response"
       ) {
 
-        jarvisBrainBusy =
-          false;
+        jarvisBrainBusy = false;
 
         if (
           jarvisBrainResolve
@@ -1565,39 +1608,42 @@ function initializeJarvisBrain() {
 
         }
 
-        jarvisBrainResolve =
-          null;
-
-        jarvisBrainReject =
-          null;
+        jarvisBrainResolve = null;
+        jarvisBrainReject = null;
 
       }
 
+
+      /* ERROR */
 
       if (
         data.type === "error"
       ) {
 
-        jarvisBrainBusy =
-          false;
+        jarvisBrainBusy = false;
+
+        const error =
+          new Error(
+            data.message ||
+            "Unknown local brain error"
+          );
 
         if (
           jarvisBrainReject
         ) {
 
           jarvisBrainReject(
-            new Error(
-              data.message
-            )
+            error
           );
 
         }
 
-        jarvisBrainResolve =
-          null;
+        jarvisBrainResolve = null;
+        jarvisBrainReject = null;
 
-        jarvisBrainReject =
-          null;
+        setSystemState(
+          "READY"
+        );
 
       }
 
@@ -1605,11 +1651,33 @@ function initializeJarvisBrain() {
 
 
   jarvisBrainWorker.onerror =
-    error => {
+    event => {
 
       console.error(
-        "JARVIS brain worker error:",
-        error
+        "JARVIS brain worker failed:",
+        event
+      );
+
+      jarvisBrainBusy = false;
+
+      if (
+        jarvisBrainReject
+      ) {
+
+        jarvisBrainReject(
+          new Error(
+            event.message ||
+            "Brain worker failed to load"
+          )
+        );
+
+      }
+
+      jarvisBrainResolve = null;
+      jarvisBrainReject = null;
+
+      setSystemState(
+        "READY"
       );
 
     };
@@ -1619,15 +1687,17 @@ function initializeJarvisBrain() {
 
 function askJarvisBrain(text) {
 
-  initializeJarvisBrain();
-
-  if (jarvisBrainBusy) {
+  if (
+    jarvisBrainBusy
+  ) {
 
     return Promise.resolve(
       "I'm still processing the previous request."
     );
 
   }
+
+  initializeJarvisBrain();
 
   jarvisBrainBusy = true;
 
@@ -1643,7 +1713,7 @@ function askJarvisBrain(text) {
       jarvisBrainWorker
         .postMessage({
           type: "ask",
-          text
+          text: text
         });
 
     }
@@ -1651,7 +1721,6 @@ function askJarvisBrain(text) {
 
 }
 
-</script>
 </script>
 
 </body>
