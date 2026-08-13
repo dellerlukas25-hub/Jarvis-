@@ -370,17 +370,19 @@
       padding: 3px;
     }
 
-    #bootScreen {
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      background: #020506;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      transition: opacity 0.6s ease;
-    }
+  #bootScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #020506;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  transition: opacity 0.6s ease;
+
+  pointer-events: none !important;
+}
 
     .boot-title {
       color: var(--primary);
