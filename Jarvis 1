@@ -15,6 +15,7 @@
   <meta name="apple-mobile-web-app-title" content="JARVIS" />
 
   <title>JARVIS</title>
+<link rel="manifest" href="./manifest.webmanifest">
 
   <style>
     * {
