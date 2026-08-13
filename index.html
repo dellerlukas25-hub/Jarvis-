@@ -918,10 +918,27 @@ async function processRequest(text) {
 
   else {
 
+  try {
+
     answer =
-      localJarvisResponse(text);
+      await askJarvisBrain(
+        text
+      );
+
+  } catch (error) {
+
+    console.error(
+      "Local brain error:",
+      error
+    );
+
+    answer =
+      "My local intelligence system encountered an error: " +
+      error.message;
 
   }
+
+}
 
 
   addMessage(
@@ -1423,7 +1440,179 @@ if ("serviceWorker" in navigator) {
   });
 
 }
+<script>
 
+let jarvisBrainWorker = null;
+
+let jarvisBrainReady = false;
+
+let jarvisBrainBusy = false;
+
+let jarvisBrainResolve = null;
+let jarvisBrainReject = null;
+
+
+function initializeJarvisBrain() {
+
+  if (jarvisBrainWorker) {
+    return;
+  }
+
+  jarvisBrainWorker =
+    new Worker(
+      "./brain-worker.js",
+      {
+        type: "module"
+      }
+    );
+
+
+  jarvisBrainWorker.onmessage =
+    event => {
+
+      const data =
+        event.data || {};
+
+
+      if (
+        data.type === "progress"
+      ) {
+
+        const percent =
+          typeof data.progress === "number"
+            ? Math.round(data.progress)
+            : null;
+
+        statusText.textContent =
+          "LOADING BRAIN";
+
+        systemLabel.textContent =
+          percent !== null
+            ? `LOCAL AI ${percent}%`
+            : "INITIALIZING LOCAL AI";
+
+      }
+
+
+      if (
+        data.type === "ready"
+      ) {
+
+        jarvisBrainReady = true;
+
+        statusText.textContent =
+          "LOCAL";
+
+        systemLabel.textContent =
+          "JARVIS BRAIN ONLINE";
+
+      }
+
+
+      if (
+        data.type === "response"
+      ) {
+
+        jarvisBrainBusy =
+          false;
+
+        if (
+          jarvisBrainResolve
+        ) {
+
+          jarvisBrainResolve(
+            data.text
+          );
+
+        }
+
+        jarvisBrainResolve =
+          null;
+
+        jarvisBrainReject =
+          null;
+
+      }
+
+
+      if (
+        data.type === "error"
+      ) {
+
+        jarvisBrainBusy =
+          false;
+
+        if (
+          jarvisBrainReject
+        ) {
+
+          jarvisBrainReject(
+            new Error(
+              data.message
+            )
+          );
+
+        }
+
+        jarvisBrainResolve =
+          null;
+
+        jarvisBrainReject =
+          null;
+
+      }
+
+    };
+
+
+  jarvisBrainWorker.onerror =
+    error => {
+
+      console.error(
+        "JARVIS brain worker error:",
+        error
+      );
+
+    };
+
+}
+
+
+function askJarvisBrain(text) {
+
+  initializeJarvisBrain();
+
+  if (jarvisBrainBusy) {
+
+    return Promise.resolve(
+      "I'm still processing the previous request."
+    );
+
+  }
+
+  jarvisBrainBusy = true;
+
+  return new Promise(
+    (resolve, reject) => {
+
+      jarvisBrainResolve =
+        resolve;
+
+      jarvisBrainReject =
+        reject;
+
+      jarvisBrainWorker
+        .postMessage({
+          type: "ask",
+          text
+        });
+
+    }
+  );
+
+}
+
+</script>
 </script>
 
 </body>
