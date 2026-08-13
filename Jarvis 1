@@ -1,1 +1,1397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
 
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
+  />
+
+  <meta name="theme-color" content="#050b0f" />
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="JARVIS" />
+
+  <title>JARVIS</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --background: #030608;
+      --panel: rgba(8, 20, 27, 0.82);
+      --panel-border: rgba(101, 221, 255, 0.18);
+      --primary: #8cecff;
+      --secondary: #2daed0;
+      --text: #e9fbff;
+      --muted: #73949d;
+      --danger: #ff6262;
+      --success: #75ffd0;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background:
+        radial-gradient(circle at 50% 32%, rgba(32, 139, 179, 0.13), transparent 35%),
+        linear-gradient(180deg, #020506 0%, #050b0e 50%, #020405 100%);
+      color: var(--text);
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "SF Pro Display",
+        "SF Pro Text",
+        Helvetica,
+        Arial,
+        sans-serif;
+      overflow: hidden;
+    }
+
+    body {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    #app {
+      height: 100%;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .background-grid {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.15;
+      background-image:
+        linear-gradient(rgba(75, 215, 255, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(75, 215, 255, 0.1) 1px, transparent 1px);
+      background-size: 36px 36px;
+      mask-image: linear-gradient(to bottom, black, transparent);
+    }
+
+    header {
+      position: relative;
+      z-index: 2;
+      min-height: 72px;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(110, 220, 255, 0.1);
+      background: rgba(1, 5, 8, 0.5);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .brand-title {
+      font-weight: 600;
+      letter-spacing: 7px;
+      font-size: 18px;
+      color: var(--primary);
+    }
+
+    .brand-subtitle {
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: 2px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--primary);
+      font-size: 10px;
+      letter-spacing: 1.8px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--success);
+      border-radius: 999px;
+      box-shadow: 0 0 12px rgba(117, 255, 208, 0.8);
+    }
+
+    .main {
+      position: relative;
+      z-index: 2;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .core-area {
+      flex: 0 0 250px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .core {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .core-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(108, 225, 255, 0.5);
+    }
+
+    .ring-one {
+      width: 150px;
+      height: 150px;
+      animation: rotate 18s linear infinite;
+      border-style: dashed;
+    }
+
+    .ring-two {
+      width: 118px;
+      height: 118px;
+      border-color: rgba(86, 221, 255, 0.32);
+      animation: rotateReverse 12s linear infinite;
+    }
+
+    .ring-three {
+      width: 84px;
+      height: 84px;
+      border-color: rgba(121, 235, 255, 0.55);
+    }
+
+    .core-center {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background:
+        radial-gradient(
+          circle,
+          rgba(230, 252, 255, 0.95) 0%,
+          rgba(93, 224, 255, 0.85) 18%,
+          rgba(33, 135, 170, 0.25) 55%,
+          transparent 70%
+        );
+      box-shadow:
+        0 0 20px rgba(84, 219, 255, 0.7),
+        0 0 60px rgba(84, 219, 255, 0.25);
+      animation: pulse 2.3s ease-in-out infinite;
+    }
+
+    .core.listening .ring-one,
+    .core.listening .ring-two {
+      animation-duration: 2s;
+    }
+
+    .core.listening .core-center {
+      animation-duration: 0.7s;
+      box-shadow:
+        0 0 30px rgba(84, 219, 255, 1),
+        0 0 90px rgba(84, 219, 255, 0.5);
+    }
+
+    .core.speaking .core-center {
+      animation-duration: 0.35s;
+    }
+
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes rotateReverse {
+      from { transform: rotate(360deg); }
+      to { transform: rotate(0deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(0.93); opacity: 0.8; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+
+    .system-label {
+      position: absolute;
+      bottom: 15px;
+      color: var(--muted);
+      letter-spacing: 3px;
+      font-size: 9px;
+    }
+
+    #conversation {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 5px 17px 20px;
+      scroll-behavior: smooth;
+    }
+
+    #conversation::-webkit-scrollbar {
+      display: none;
+    }
+
+    .message {
+      width: 100%;
+      margin: 10px 0;
+      display: flex;
+    }
+
+    .message.user {
+      justify-content: flex-end;
+    }
+
+    .bubble {
+      max-width: 85%;
+      padding: 12px 14px;
+      line-height: 1.4;
+      border-radius: 15px;
+      font-size: 14px;
+    }
+
+    .jarvis .bubble {
+      background: rgba(17, 46, 58, 0.55);
+      border: 1px solid rgba(91, 219, 255, 0.16);
+      border-bottom-left-radius: 4px;
+    }
+
+    .user .bubble {
+      background: rgba(40, 148, 180, 0.18);
+      border: 1px solid rgba(96, 218, 255, 0.23);
+      border-bottom-right-radius: 4px;
+    }
+
+    .speaker-label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 8px;
+      letter-spacing: 2px;
+      color: var(--primary);
+    }
+
+    .bottom-area {
+      position: relative;
+      z-index: 3;
+      padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
+      background: rgba(1, 5, 7, 0.72);
+      backdrop-filter: blur(25px);
+      border-top: 1px solid rgba(98, 223, 255, 0.12);
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #messageInput {
+      flex: 1;
+      min-width: 0;
+      height: 48px;
+      border-radius: 14px;
+      border: 1px solid rgba(107, 224, 255, 0.18);
+      outline: none;
+      background: rgba(15, 39, 48, 0.65);
+      color: white;
+      padding: 0 15px;
+      font-size: 15px;
+    }
+
+    #messageInput::placeholder {
+      color: #587680;
+    }
+
+    .circle-button {
+      flex: 0 0 48px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 1px solid rgba(105, 222, 255, 0.3);
+      background: rgba(21, 76, 93, 0.45);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .circle-button:active {
+      transform: scale(0.94);
+    }
+
+    #micButton.listening {
+      border-color: rgba(130, 240, 255, 0.8);
+      box-shadow: 0 0 20px rgba(79, 219, 255, 0.35);
+    }
+
+    .mini-row {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-top: 9px;
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+    }
+
+    .mini-button {
+      border: none;
+      background: none;
+      color: inherit;
+      font-size: inherit;
+      letter-spacing: inherit;
+      padding: 3px;
+    }
+
+    #bootScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: #020506;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      transition: opacity 0.6s ease;
+    }
+
+    .boot-title {
+      color: var(--primary);
+      font-size: 26px;
+      letter-spacing: 10px;
+      margin-left: 10px;
+    }
+
+    .boot-line {
+      width: 220px;
+      height: 1px;
+      margin-top: 25px;
+      background: rgba(107, 226, 255, 0.2);
+      overflow: hidden;
+    }
+
+    .boot-progress {
+      width: 0%;
+      height: 100%;
+      background: var(--primary);
+      box-shadow: 0 0 10px var(--primary);
+      animation: boot 1.7s ease forwards;
+    }
+
+    .boot-text {
+      color: var(--muted);
+      margin-top: 13px;
+      font-size: 9px;
+      letter-spacing: 2px;
+    }
+
+    @keyframes boot {
+      to { width: 100%; }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="bootScreen">
+    <div class="boot-title">JARVIS</div>
+
+    <div class="boot-line">
+      <div class="boot-progress"></div>
+    </div>
+
+    <div class="boot-text">
+      INITIALIZING SYSTEM
+    </div>
+  </div>
+
+  <div id="app">
+
+    <div class="background-grid"></div>
+
+    <header>
+      <div class="brand">
+        <div class="brand-title">JARVIS</div>
+        <div class="brand-subtitle">
+          PERSONAL INTELLIGENCE SYSTEM
+        </div>
+      </div>
+
+      <div class="status">
+        <span class="status-dot"></span>
+        <span id="statusText">ONLINE</span>
+      </div>
+    </header>
+
+    <main class="main">
+
+      <section class="core-area">
+
+        <div id="core" class="core">
+          <div class="core-ring ring-one"></div>
+          <div class="core-ring ring-two"></div>
+          <div class="core-ring ring-three"></div>
+          <div class="core-center"></div>
+        </div>
+
+        <div id="systemLabel" class="system-label">
+          SYSTEM READY
+        </div>
+
+      </section>
+
+      <section id="conversation"></section>
+
+    </main>
+
+    <section class="bottom-area">
+
+      <div class="input-row">
+
+        <input
+          id="messageInput"
+          type="text"
+          autocomplete="off"
+          autocorrect="on"
+          placeholder="Speak or enter a command..."
+        />
+
+        <button
+          id="sendButton"
+          class="circle-button"
+          aria-label="Send"
+        >
+          ➤
+        </button>
+
+        <button
+          id="micButton"
+          class="circle-button"
+          aria-label="Microphone"
+        >
+          ◉
+        </button>
+
+      </div>
+
+      <div class="mini-row">
+        <button id="memoryButton" class="mini-button">
+          MEMORY
+        </button>
+
+        <button id="voiceButton" class="mini-button">
+          VOICE: ON
+        </button>
+
+        <button id="clearButton" class="mini-button">
+          CLEAR
+        </button>
+      </div>
+
+    </section>
+
+  </div>
+
+<script>
+
+const conversation = document.getElementById("conversation");
+const messageInput = document.getElementById("messageInput");
+
+const sendButton = document.getElementById("sendButton");
+const micButton = document.getElementById("micButton");
+
+const voiceButton = document.getElementById("voiceButton");
+const clearButton = document.getElementById("clearButton");
+const memoryButton = document.getElementById("memoryButton");
+
+const statusText = document.getElementById("statusText");
+const systemLabel = document.getElementById("systemLabel");
+const core = document.getElementById("core");
+
+let voiceEnabled =
+  localStorage.getItem("jarvisVoice") !== "false";
+
+let recognition = null;
+let isListening = false;
+
+let memory = JSON.parse(
+  localStorage.getItem("jarvisMemory") || "{}"
+);
+
+let history = JSON.parse(
+  localStorage.getItem("jarvisHistory") || "[]"
+);
+
+/* --------------------------------
+   STARTUP
+-------------------------------- */
+
+window.addEventListener("load", () => {
+
+  setTimeout(() => {
+
+    const boot = document.getElementById("bootScreen");
+
+    boot.style.opacity = "0";
+
+    setTimeout(() => {
+      boot.classList.add("hidden");
+    }, 650);
+
+  }, 1900);
+
+  loadHistory();
+
+  if (history.length === 0) {
+
+    addMessage(
+      "jarvis",
+      "Systems online. Good afternoon. How may I assist you?"
+    );
+
+  }
+
+  setupSpeechRecognition();
+
+  updateVoiceButton();
+
+});
+
+
+/* --------------------------------
+   MESSAGES
+-------------------------------- */
+
+function addMessage(sender, text, save = true) {
+
+  const wrapper = document.createElement("div");
+
+  wrapper.className =
+    "message " +
+    (sender === "user" ? "user" : "jarvis");
+
+  const bubble = document.createElement("div");
+
+  bubble.className = "bubble";
+
+  const label = document.createElement("span");
+
+  label.className = "speaker-label";
+
+  label.textContent =
+    sender === "user"
+      ? "YOU"
+      : "JARVIS";
+
+  const body = document.createElement("div");
+
+  body.textContent = text;
+
+  bubble.appendChild(label);
+  bubble.appendChild(body);
+
+  wrapper.appendChild(bubble);
+
+  conversation.appendChild(wrapper);
+
+  conversation.scrollTop =
+    conversation.scrollHeight;
+
+  if (save) {
+
+    history.push({
+      sender,
+      text
+    });
+
+    if (history.length > 100) {
+      history.shift();
+    }
+
+    localStorage.setItem(
+      "jarvisHistory",
+      JSON.stringify(history)
+    );
+
+  }
+
+}
+
+
+function loadHistory() {
+
+  history.forEach(message => {
+
+    addMessage(
+      message.sender,
+      message.text,
+      false
+    );
+
+  });
+
+}
+
+
+/* --------------------------------
+   SEND COMMAND
+-------------------------------- */
+
+async function submitMessage() {
+
+  const text =
+    messageInput.value.trim();
+
+  if (!text) return;
+
+  messageInput.value = "";
+
+  addMessage("user", text);
+
+  await processRequest(text);
+
+}
+
+
+sendButton.addEventListener(
+  "click",
+  submitMessage
+);
+
+
+messageInput.addEventListener(
+  "keydown",
+  event => {
+
+    if (event.key === "Enter") {
+      submitMessage();
+    }
+
+  }
+);
+
+
+/* --------------------------------
+   JARVIS COMMAND ENGINE
+-------------------------------- */
+
+async function processRequest(text) {
+
+  setSystemState("THINKING");
+
+  await delay(350);
+
+  const lower =
+    text.toLowerCase().trim();
+
+  let answer = "";
+
+
+  /* TIME */
+
+  if (
+    lower === "time" ||
+    lower.includes("what time")
+  ) {
+
+    const time =
+      new Date().toLocaleTimeString(
+        [],
+        {
+          hour: "numeric",
+          minute: "2-digit"
+        }
+      );
+
+    answer =
+      `The current time is ${time}.`;
+
+  }
+
+
+  /* DATE */
+
+  else if (
+    lower === "date" ||
+    lower.includes("what date") ||
+    lower.includes("what day")
+  ) {
+
+    answer =
+      new Date().toLocaleDateString(
+        [],
+        {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          year: "numeric"
+        }
+      );
+
+  }
+
+
+  /* GREETING */
+
+  else if (
+    lower === "hello" ||
+    lower === "hi" ||
+    lower === "hey jarvis" ||
+    lower === "jarvis"
+  ) {
+
+    answer =
+      "At your service.";
+
+  }
+
+
+  /* REMEMBER COMMAND */
+
+  else if (
+    lower.startsWith("remember that ")
+  ) {
+
+    const information =
+      text.substring(14).trim();
+
+    const id =
+      Date.now().toString();
+
+    memory[id] =
+      information;
+
+    saveMemory();
+
+    answer =
+      `Understood. I've stored that in memory.`;
+
+  }
+
+
+  /* SHOW MEMORY */
+
+  else if (
+    lower === "memory" ||
+    lower === "show memory" ||
+    lower === "what do you remember"
+  ) {
+
+    const entries =
+      Object.values(memory);
+
+    if (!entries.length) {
+
+      answer =
+        "My memory is currently empty.";
+
+    } else {
+
+      answer =
+        "I currently remember: " +
+        entries.join(". ");
+
+    }
+
+  }
+
+
+  /* FORGET MEMORY */
+
+  else if (
+    lower === "forget everything" ||
+    lower === "clear memory"
+  ) {
+
+    memory = {};
+
+    saveMemory();
+
+    answer =
+      "Long-term memory has been cleared.";
+
+  }
+
+
+  /* BATTERY */
+
+  else if (
+    lower.includes("battery")
+  ) {
+
+    answer =
+      await getBatteryStatus();
+
+  }
+
+
+  /* HELP */
+
+  else if (
+    lower === "commands" ||
+    lower === "help"
+  ) {
+
+    answer =
+      "Current commands include time, date, battery, memory, remember that, clear memory, clear conversation, voice on, and voice off.";
+
+  }
+
+
+  /* VOICE OFF */
+
+  else if (
+    lower === "voice off"
+  ) {
+
+    voiceEnabled = false;
+
+    saveVoiceSetting();
+
+    answer =
+      "Voice responses disabled.";
+
+  }
+
+
+  /* VOICE ON */
+
+  else if (
+    lower === "voice on"
+  ) {
+
+    voiceEnabled = true;
+
+    saveVoiceSetting();
+
+    answer =
+      "Voice responses enabled.";
+
+  }
+
+
+  /* CLEAR CHAT */
+
+  else if (
+    lower === "clear conversation"
+  ) {
+
+    clearConversation();
+
+    answer =
+      "Conversation cleared.";
+
+  }
+
+
+  /* LOCAL FALLBACK */
+
+  else {
+
+    answer =
+      localJarvisResponse(text);
+
+  }
+
+
+  addMessage(
+    "jarvis",
+    answer
+  );
+
+  if (voiceEnabled) {
+    speak(answer);
+  } else {
+    setSystemState("READY");
+  }
+
+}
+
+
+/* --------------------------------
+   TEMPORARY LOCAL RESPONSE ENGINE
+-------------------------------- */
+
+function localJarvisResponse(text) {
+
+  const lower =
+    text.toLowerCase();
+
+  if (
+    lower.includes("who are you")
+  ) {
+
+    return "I am JARVIS, your personal intelligence system.";
+
+  }
+
+  if (
+    lower.includes("how are you")
+  ) {
+
+    return "All systems are functioning normally.";
+
+  }
+
+  if (
+    lower.includes("thank")
+  ) {
+
+    return "Of course.";
+
+  }
+
+  return (
+    "I received your request: \"" +
+    text +
+    "\". My full AI connection has not been installed yet, but the local JARVIS systems are operational."
+  );
+
+}
+
+
+/* --------------------------------
+   SPEECH SYNTHESIS
+-------------------------------- */
+
+function speak(text) {
+
+  if (
+    !("speechSynthesis" in window)
+  ) {
+
+    setSystemState("READY");
+    return;
+
+  }
+
+  window.speechSynthesis.cancel();
+
+  const speech =
+    new SpeechSynthesisUtterance(text);
+
+  speech.rate = 1.07;
+  speech.pitch = 0.88;
+  speech.volume = 1;
+
+  const voices =
+    speechSynthesis.getVoices();
+
+  const preferred =
+    voices.find(
+      voice =>
+        voice.lang.startsWith("en-GB")
+    ) ||
+    voices.find(
+      voice =>
+        voice.lang.startsWith("en")
+    );
+
+  if (preferred) {
+    speech.voice = preferred;
+  }
+
+  speech.onstart = () => {
+    setSystemState("SPEAKING");
+  };
+
+  speech.onend = () => {
+    setSystemState("READY");
+  };
+
+  speech.onerror = () => {
+    setSystemState("READY");
+  };
+
+  window.speechSynthesis.speak(
+    speech
+  );
+
+}
+
+
+/* --------------------------------
+   SPEECH RECOGNITION
+-------------------------------- */
+
+function setupSpeechRecognition() {
+
+  const SpeechRecognition =
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+
+    micButton.title =
+      "Speech recognition is unavailable";
+
+    return;
+
+  }
+
+  recognition =
+    new SpeechRecognition();
+
+  recognition.lang =
+    "en-US";
+
+  recognition.continuous =
+    false;
+
+  recognition.interimResults =
+    false;
+
+
+  recognition.onstart = () => {
+
+    isListening = true;
+
+    micButton.classList.add(
+      "listening"
+    );
+
+    setSystemState(
+      "LISTENING"
+    );
+
+  };
+
+
+  recognition.onresult =
+    event => {
+
+      const transcript =
+        event.results[0][0]
+          .transcript;
+
+      messageInput.value =
+        transcript;
+
+      submitMessage();
+
+    };
+
+
+  recognition.onerror = () => {
+
+    isListening = false;
+
+    micButton.classList.remove(
+      "listening"
+    );
+
+    setSystemState("READY");
+
+  };
+
+
+  recognition.onend = () => {
+
+    isListening = false;
+
+    micButton.classList.remove(
+      "listening"
+    );
+
+    if (
+      statusText.textContent ===
+      "LISTENING"
+    ) {
+
+      setSystemState(
+        "READY"
+      );
+
+    }
+
+  };
+
+}
+
+
+micButton.addEventListener(
+  "click",
+  () => {
+
+    if (!recognition) {
+
+      addMessage(
+        "jarvis",
+        "Voice recognition is not available in this browser. You can still type commands."
+      );
+
+      return;
+
+    }
+
+    if (isListening) {
+
+      recognition.stop();
+
+      return;
+
+    }
+
+    try {
+
+      recognition.start();
+
+    } catch (error) {
+
+      console.log(error);
+
+    }
+
+  }
+);
+
+
+/* --------------------------------
+   BATTERY
+-------------------------------- */
+
+async function getBatteryStatus() {
+
+  if (!navigator.getBattery) {
+
+    return "Battery information is unavailable through this browser.";
+
+  }
+
+  try {
+
+    const battery =
+      await navigator.getBattery();
+
+    const percentage =
+      Math.round(
+        battery.level * 100
+      );
+
+    return (
+      "Your battery is currently at " +
+      percentage +
+      " percent."
+    );
+
+  } catch {
+
+    return "I couldn't access battery information.";
+
+  }
+
+}
+
+
+/* --------------------------------
+   MEMORY
+-------------------------------- */
+
+function saveMemory() {
+
+  localStorage.setItem(
+    "jarvisMemory",
+    JSON.stringify(memory)
+  );
+
+}
+
+
+memoryButton.addEventListener(
+  "click",
+  () => {
+
+    messageInput.value =
+      "show memory";
+
+    submitMessage();
+
+  }
+);
+
+
+/* --------------------------------
+   VOICE SETTINGS
+-------------------------------- */
+
+voiceButton.addEventListener(
+  "click",
+  () => {
+
+    voiceEnabled =
+      !voiceEnabled;
+
+    saveVoiceSetting();
+
+    updateVoiceButton();
+
+    if (voiceEnabled) {
+
+      speak(
+        "Voice system enabled."
+      );
+
+    }
+
+  }
+);
+
+
+function saveVoiceSetting() {
+
+  localStorage.setItem(
+    "jarvisVoice",
+    voiceEnabled
+  );
+
+  updateVoiceButton();
+
+}
+
+
+function updateVoiceButton() {
+
+  voiceButton.textContent =
+    voiceEnabled
+      ? "VOICE: ON"
+      : "VOICE: OFF";
+
+}
+
+
+/* --------------------------------
+   CLEAR CONVERSATION
+-------------------------------- */
+
+clearButton.addEventListener(
+  "click",
+  clearConversation
+);
+
+
+function clearConversation() {
+
+  history = [];
+
+  localStorage.removeItem(
+    "jarvisHistory"
+  );
+
+  conversation.innerHTML = "";
+
+}
+
+
+/* --------------------------------
+   SYSTEM STATE
+-------------------------------- */
+
+function setSystemState(state) {
+
+  core.classList.remove(
+    "listening",
+    "speaking"
+  );
+
+  switch (state) {
+
+    case "LISTENING":
+
+      statusText.textContent =
+        "LISTENING";
+
+      systemLabel.textContent =
+        "VOICE INPUT ACTIVE";
+
+      core.classList.add(
+        "listening"
+      );
+
+      break;
+
+
+    case "THINKING":
+
+      statusText.textContent =
+        "PROCESSING";
+
+      systemLabel.textContent =
+        "ANALYZING REQUEST";
+
+      break;
+
+
+    case "SPEAKING":
+
+      statusText.textContent =
+        "SPEAKING";
+
+      systemLabel.textContent =
+        "AUDIO OUTPUT ACTIVE";
+
+      core.classList.add(
+        "speaking"
+      );
+
+      break;
+
+
+    default:
+
+      statusText.textContent =
+        "ONLINE";
+
+      systemLabel.textContent =
+        "SYSTEM READY";
+
+  }
+
+}
+
+
+/* --------------------------------
+   UTILITY
+-------------------------------- */
+
+function delay(ms) {
+
+  return new Promise(
+    resolve =>
+      setTimeout(resolve, ms)
+  );
+
+}
+
+</script>
+
+</body>
+</html>
