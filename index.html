@@ -434,6 +434,21 @@
       INITIALIZING SYSTEM
     </div>
   </div>
+  <script>
+(function () {
+  setTimeout(function () {
+    const boot = document.getElementById("bootScreen");
+
+    if (boot) {
+      boot.style.opacity = "0";
+
+      setTimeout(function () {
+        boot.style.display = "none";
+      }, 600);
+    }
+  }, 2500);
+})();
+</script>
 
   <div id="app">
 
