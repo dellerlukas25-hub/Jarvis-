@@ -1,4 +1,4 @@
-const CACHE_NAME = "jarvis-v1";
+const CACHE_NAME = "jarvis-v2-local-brain";
 
 const APP_FILES = [
   "./",
@@ -7,6 +7,17 @@ const APP_FILES = [
 ];
 
 self.addEventListener("install", event => {
+    const requestURL =
+    new URL(
+      event.request.url
+    );
+
+  if (
+    requestURL.origin !==
+    self.location.origin
+  ) {
+    return;
+  }
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(APP_FILES))
