@@ -1,67 +1,19 @@
-const CACHE_NAME = "jarvis-v2-local-brain";
-
-const APP_FILES = [
-  "./",
-  "./index.html",
-  "./manifest.webmanifest"
-];
-
-self.addEventListener("install", event => {
-    const requestURL =
-    new URL(
-      event.request.url
-    );
-
-  if (
-    requestURL.origin !==
-    self.location.origin
-  ) {
-    return;
-  }
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_FILES))
-  );
-
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames
-          .filter(name => name !== CACHE_NAME)
-          .map(name => caches.delete(name))
-      );
-    })
-  );
+    (async () => {
 
-  self.clients.claim();
-});
+      const cacheNames = await caches.keys();
 
-self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") {
-    return;
-  }
+      for (const name of cacheNames) {
+        await caches.delete(name);
+      }
 
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        const copy = response.clone();
+      await self.registration.unregister();
 
-        caches.open(CACHE_NAME)
-          .then(cache => {
-            cache.put(event.request, copy);
-          });
-
-        return response;
-      })
-      .catch(() => {
-        return caches.match(event.request)
-          .then(cached => {
-            return cached || caches.match("./index.html");
-          });
-      })
+    })()
   );
 });
