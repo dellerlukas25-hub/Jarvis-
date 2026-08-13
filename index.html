@@ -436,17 +436,36 @@
   </div>
   <script>
 (function () {
+
+  const boot =
+    document.getElementById("bootScreen");
+
+  if (boot) {
+    boot.style.pointerEvents = "none";
+  }
+
   setTimeout(function () {
-    const boot = document.getElementById("bootScreen");
+
+    const boot =
+      document.getElementById("bootScreen");
 
     if (boot) {
+
+      boot.style.pointerEvents = "none";
       boot.style.opacity = "0";
 
       setTimeout(function () {
-        boot.style.display = "none";
+
+        if (boot && boot.parentNode) {
+          boot.parentNode.removeChild(boot);
+        }
+
       }, 600);
+
     }
+
   }, 2500);
+
 })();
 </script>
 
