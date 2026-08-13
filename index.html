@@ -297,13 +297,15 @@
     }
 
     .bottom-area {
-      position: relative;
-      z-index: 3;
-      padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
-      background: rgba(1, 5, 7, 0.72);
-      backdrop-filter: blur(25px);
-      border-top: 1px solid rgba(98, 223, 255, 0.12);
-    }
+  position: relative;
+  z-index: 3;
+  pointer-events: auto;
+
+  padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(1, 5, 7, 0.72);
+  backdrop-filter: blur(25px);
+  border-top: 1px solid rgba(98, 223, 255, 0.12);
+}
 
     .input-row {
       display: flex;
@@ -419,8 +421,9 @@
     }
 
     .hidden {
-      display: none !important;
-    }
+  display: none !important;
+  pointer-events: none !important;
+}
   </style>
 </head>
 
