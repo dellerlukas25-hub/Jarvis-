@@ -1,0 +1,278 @@
+name: Jarvis Self Code
+
+on:
+  workflow_dispatch:
+    inputs:
+      instruction:
+        description: "What should JARVIS change about itself?"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  models: read
+
+jobs:
+  self-code:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Load JARVIS source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Build coding request
+        env:
+          JARVIS_INSTRUCTION: ${{ inputs.instruction }}
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          allowed_files = [
+              "index.html",
+              "manifest.webmanifest",
+              "sw.js"
+          ]
+
+          source = {}
+
+          for filename in allowed_files:
+              path = Path(filename)
+
+              if path.exists():
+                  source[filename] = path.read_text(
+                      encoding="utf-8"
+                  )
+
+          instruction = os.environ["JARVIS_INSTRUCTION"]
+
+          system_prompt = """
+          You are the internal software engineer for a PWA
+          named JARVIS.
+
+          You are modifying JARVIS's own source code.
+
+          Requirements:
+
+          1. Follow the user's coding instruction.
+          2. Preserve existing functionality unless the
+             instruction explicitly requests otherwise.
+          3. Keep the application compatible with an
+             iPhone PWA and GitHub Pages.
+          4. Never add passwords, API keys, access tokens,
+             private keys, or other secrets.
+          5. Never create external tracking or telemetry.
+          6. Do not modify GitHub Actions or repository
+             permissions.
+          7. Only modify these files:
+
+             index.html
+             manifest.webmanifest
+             sw.js
+
+          Return ONLY valid JSON.
+
+          The JSON must have this structure:
+
+          {
+            "summary": "Short explanation of the update",
+            "files": [
+              {
+                "path": "index.html",
+                "content": "complete new file contents"
+              }
+            ]
+          }
+
+          Include only files that actually need changing.
+
+          Each content value must contain the COMPLETE
+          replacement contents of that file.
+          """
+
+          user_prompt = {
+              "instruction": instruction,
+              "current_files": source
+          }
+
+          request = {
+              "model": "openai/gpt-4.1",
+              "temperature": 0.2,
+              "response_format": {
+                  "type": "json_object"
+              },
+              "messages": [
+                  {
+                      "role": "system",
+                      "content": system_prompt
+                  },
+                  {
+                      "role": "user",
+                      "content": json.dumps(user_prompt)
+                  }
+              ]
+          }
+
+          Path("jarvis-request.json").write_text(
+              json.dumps(request),
+              encoding="utf-8"
+          )
+          PY
+
+      - name: Ask AI to modify JARVIS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl --fail-with-body \
+            --request POST \
+            --url "https://models.github.ai/inference/chat/completions" \
+            --header "Content-Type: application/json" \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            --data @jarvis-request.json \
+            --output jarvis-response.json
+
+      - name: Apply JARVIS changes
+        run: |
+          python3 <<'PY'
+          import json
+          from pathlib import Path
+
+          allowed = {
+              "index.html",
+              "manifest.webmanifest",
+              "sw.js"
+          }
+
+          response = json.loads(
+              Path("jarvis-response.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          content = (
+              response["choices"][0]
+              ["message"]["content"]
+          )
+
+          result = json.loads(content)
+
+          print()
+          print("JARVIS UPDATE:")
+          print(result.get("summary", "No summary"))
+          print()
+
+          changed = 0
+
+          for item in result.get("files", []):
+              filename = item.get("path")
+              new_content = item.get("content")
+
+              if filename not in allowed:
+                  raise RuntimeError(
+                      f"JARVIS attempted to modify "
+                      f"unauthorized file: {filename}"
+                  )
+
+              if not isinstance(new_content, str):
+                  raise RuntimeError(
+                      f"Invalid content for {filename}"
+                  )
+
+              Path(filename).write_text(
+                  new_content,
+                  encoding="utf-8"
+              )
+
+              print("Updated:", filename)
+              changed += 1
+
+          if changed == 0:
+              print("No source files required changes.")
+
+          Path("jarvis-update-summary.txt").write_text(
+              result.get(
+                  "summary",
+                  "JARVIS generated an update."
+              ),
+              encoding="utf-8"
+          )
+          PY
+
+      - name: Validate JARVIS
+        run: |
+          python3 -m json.tool manifest.webmanifest > /dev/null
+
+          node --check sw.js
+
+          python3 <<'PY'
+          from pathlib import Path
+
+          html = Path("index.html").read_text(
+              encoding="utf-8"
+          ).lower()
+
+          required = [
+              "<!doctype html",
+              "<html",
+              "</html>",
+              "<script",
+              "</script>"
+          ]
+
+          for item in required:
+              if item not in html:
+                  raise RuntimeError(
+                      f"index.html validation failed: "
+                      f"missing {item}"
+                  )
+
+          print("JARVIS validation passed.")
+          PY
+
+      - name: Create upgrade branch
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if git diff --quiet -- \
+            index.html manifest.webmanifest sw.js
+          then
+            echo "JARVIS determined that no code changes were required."
+            exit 0
+          fi
+
+          BRANCH="jarvis/upgrade-${RUN_ID}"
+
+          git config user.name "JARVIS"
+          git config user.email \
+            "jarvis@users.noreply.github.com"
+
+          git checkout -b "$BRANCH"
+
+          git add \
+            index.html \
+            manifest.webmanifest \
+            sw.js
+
+          git commit \
+            -m "JARVIS self-generated upgrade"
+
+          git push origin "$BRANCH"
+
+          echo "## JARVIS upgrade generated" \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "Branch:" \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo "\`$BRANCH\`" \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          cat jarvis-update-summary.txt \
+            >> "$GITHUB_STEP_SUMMARY"
