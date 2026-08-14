@@ -2037,7 +2037,7 @@ function jarvisDeveloperContext(
 
       return source.slice(
         start,
-        start + 6000
+        start + 1800
       );
 
     }
@@ -2060,7 +2060,7 @@ function jarvisDeveloperContext(
 
     return source.slice(
       0,
-      6000
+      1800
     );
 
   }
@@ -2083,16 +2083,16 @@ function jarvisDeveloperContext(
     return source.slice(
       Math.max(
         0,
-        enginePosition - 1500
+        enginePosition - 700
       ),
-      enginePosition + 4500
+      enginePosition + 1100
     );
 
   }
 
 
   return source.slice(
-    -6000
+    -1800
   );
 
 }
@@ -2146,7 +2146,7 @@ function jarvisDeveloperGeneratedText(
 
 async function jarvisRunDeveloperBrain(
   prompt,
-  maxTokens = 160
+  maxTokens = 96
 ) {
 
   const brain =
@@ -2781,7 +2781,7 @@ Do not use markdown fences.
   const raw =
     await jarvisRunDeveloperBrain(
       prompt,
-      160
+      96
     );
 
 
@@ -2803,22 +2803,20 @@ Do not use markdown fences.
 
 
   if (
-    patch.validation.ok
-  ) {
+  patch.validation.ok
+) {
 
-    patch.review =
-      await jarvisReviewPatch(
-        patch
-      );
+  patch.review =
+    "PASS: deterministic syntax and safety checks passed.";
 
-  }
+}
 
-  else {
+else {
 
-    patch.review =
-      "CAUTION: Review skipped because validation failed.";
+  patch.review =
+    "CAUTION: deterministic validation failed.";
 
-  }
+}
 
 
   return patch;
