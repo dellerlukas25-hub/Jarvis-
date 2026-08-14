@@ -1889,7 +1889,1507 @@ Stop after the question has been answered.
 
 }
 
+/* =========================================================
+   JARVIS SELF-DEVELOPMENT SYSTEM — STAGE 1
+   Inspect → Propose → Validate → Review → Approve
+========================================================= */
 
+let jarvisPendingPatch = null;
+
+
+/* --------------------------------
+   DETECT DEVELOPER REQUEST
+-------------------------------- */
+
+function jarvisIsDeveloperRequest(text) {
+
+  const lower =
+    String(text || "")
+      .toLowerCase()
+      .trim();
+
+  return (
+    lower.startsWith("developer:") ||
+    lower.startsWith("dev:") ||
+    lower.includes("change your code") ||
+    lower.includes("modify your code") ||
+    lower.includes("edit your code") ||
+    lower.includes("improve your code") ||
+    lower.includes("fix your code") ||
+    lower.includes("change yourself") ||
+    lower.includes("modify yourself") ||
+    lower.includes("improve yourself") ||
+    lower.includes("add a feature to yourself")
+  );
+
+}
+
+
+/* --------------------------------
+   READ JARVIS SOURCE
+-------------------------------- */
+
+async function jarvisReadOwnSource() {
+
+  const response =
+    await fetch(
+      "./index.html?developer=" +
+      Date.now(),
+      {
+        cache: "no-store"
+      }
+    );
+
+  if (!response.ok) {
+
+    throw new Error(
+      "I could not inspect my source code."
+    );
+
+  }
+
+  return await response.text();
+
+}
+
+
+/* --------------------------------
+   SELECT RELEVANT SOURCE
+-------------------------------- */
+
+function jarvisDeveloperContext(
+  source,
+  request
+) {
+
+  const lower =
+    request.toLowerCase();
+
+
+  const sections = [
+
+    [
+      ["voice", "speak"],
+      "SPEECH SYNTHESIS"
+    ],
+
+    [
+      ["microphone", "speech recognition"],
+      "SPEECH RECOGNITION"
+    ],
+
+    [
+      ["memory", "remember"],
+      "MEMORY"
+    ],
+
+    [
+      ["brain", "model", "intelligence", "ai"],
+      "JARVIS LOCAL BRAIN"
+    ],
+
+    [
+      ["command", "response", "greeting"],
+      "JARVIS COMMAND ENGINE"
+    ],
+
+    [
+      ["input", "send"],
+      "SEND COMMAND"
+    ],
+
+    [
+      ["battery"],
+      "BATTERY"
+    ]
+
+  ];
+
+
+  for (
+    const [keywords, marker]
+    of sections
+  ) {
+
+    if (
+      !keywords.some(
+        keyword =>
+          lower.includes(keyword)
+      )
+    ) {
+      continue;
+    }
+
+
+    const position =
+      source.indexOf(marker);
+
+
+    if (
+      position !== -1
+    ) {
+
+      const start =
+        Math.max(
+          0,
+          position - 1300
+        );
+
+      return source.slice(
+        start,
+        start + 6000
+      );
+
+    }
+
+  }
+
+
+  /*
+    UI / CSS requests
+  */
+
+  if (
+    lower.includes("color") ||
+    lower.includes("style") ||
+    lower.includes("interface") ||
+    lower.includes("layout") ||
+    lower.includes("button") ||
+    lower.includes("screen")
+  ) {
+
+    return source.slice(
+      0,
+      6000
+    );
+
+  }
+
+
+  /*
+    General fallback
+  */
+
+  const enginePosition =
+    source.indexOf(
+      "JARVIS COMMAND ENGINE"
+    );
+
+
+  if (
+    enginePosition !== -1
+  ) {
+
+    return source.slice(
+      Math.max(
+        0,
+        enginePosition - 1500
+      ),
+      enginePosition + 4500
+    );
+
+  }
+
+
+  return source.slice(
+    -6000
+  );
+
+}
+
+
+/* --------------------------------
+   EXTRACT MODEL RESPONSE
+-------------------------------- */
+
+function jarvisDeveloperGeneratedText(
+  output
+) {
+
+  const generated =
+    output?.[0]?.generated_text;
+
+
+  if (
+    Array.isArray(
+      generated
+    )
+  ) {
+
+    return (
+      generated
+        .at(-1)
+        ?.content || ""
+    );
+
+  }
+
+
+  if (
+    typeof generated ===
+    "string"
+  ) {
+
+    return generated;
+
+  }
+
+
+  return "";
+
+}
+
+
+/* --------------------------------
+   DEVELOPER AI
+-------------------------------- */
+
+async function jarvisRunDeveloperBrain(
+  prompt,
+  maxTokens = 160
+) {
+
+  const brain =
+    await initializeJarvisBrain();
+
+
+  const messages = [
+
+    {
+
+      role: "system",
+
+      content: `
+You are JARVIS Developer Mode.
+
+You are editing your own software.
+
+Produce ONE small conservative change.
+
+Never invent source code that is not shown.
+
+The FIND section must be copied EXACTLY
+from the supplied source.
+
+Do not rewrite unrelated code.
+
+Do not remove the input box.
+Do not remove the send button.
+Do not remove existing working systems.
+
+Do not use markdown code fences.
+
+Return only the requested patch format.
+`
+
+    },
+
+    {
+
+      role: "user",
+
+      content: prompt
+
+    }
+
+  ];
+
+
+  const output =
+    await brain(
+
+      messages,
+
+      {
+
+        max_new_tokens:
+          maxTokens,
+
+        do_sample:
+          false,
+
+        repetition_penalty:
+          1.15,
+
+        no_repeat_ngram_size:
+          3
+
+      }
+
+    );
+
+
+  return (
+    jarvisDeveloperGeneratedText(
+      output
+    ).trim()
+  );
+
+}
+
+
+/* --------------------------------
+   READ MARKED BLOCK
+-------------------------------- */
+
+function jarvisReadPatchBlock(
+  text,
+  startMarker,
+  endMarker
+) {
+
+  const start =
+    text.indexOf(
+      startMarker
+    );
+
+  const end =
+    text.indexOf(
+      endMarker
+    );
+
+
+  if (
+    start === -1 ||
+    end === -1 ||
+    end <= start
+  ) {
+
+    return "";
+
+  }
+
+
+  let result =
+    text.slice(
+
+      start +
+      startMarker.length,
+
+      end
+
+    ).trim();
+
+
+  result =
+    result.replace(
+      /^```[a-zA-Z]*\s*/i,
+      ""
+    );
+
+
+  result =
+    result.replace(
+      /```\s*$/i,
+      ""
+    );
+
+
+  return result.trim();
+
+}
+
+
+/* --------------------------------
+   PARSE PATCH
+-------------------------------- */
+
+function jarvisParsePatch(
+  raw
+) {
+
+  const summary =
+    jarvisReadPatchBlock(
+      raw,
+      "SUMMARY_START",
+      "SUMMARY_END"
+    );
+
+
+  const find =
+    jarvisReadPatchBlock(
+      raw,
+      "FIND_START",
+      "FIND_END"
+    );
+
+
+  const replace =
+    jarvisReadPatchBlock(
+      raw,
+      "REPLACE_START",
+      "REPLACE_END"
+    );
+
+
+  if (
+    !find ||
+    !replace
+  ) {
+
+    throw new Error(
+      "The local model did not produce a usable exact patch."
+    );
+
+  }
+
+
+  return {
+
+    summary:
+      summary ||
+      "Proposed JARVIS modification",
+
+    find,
+
+    replace
+
+  };
+
+}
+
+
+/* --------------------------------
+   COUNT EXACT MATCHES
+-------------------------------- */
+
+function jarvisCountMatches(
+  source,
+  find
+) {
+
+  let count = 0;
+  let position = 0;
+
+
+  while (true) {
+
+    const found =
+      source.indexOf(
+        find,
+        position
+      );
+
+
+    if (
+      found === -1
+    ) {
+      break;
+    }
+
+
+    count++;
+
+
+    position =
+      found +
+      find.length;
+
+  }
+
+
+  return count;
+
+}
+
+
+/* --------------------------------
+   JAVASCRIPT / HTML VALIDATOR
+-------------------------------- */
+
+function jarvisValidateCandidate(
+  candidate
+) {
+
+  try {
+
+    const parsed =
+      new DOMParser()
+        .parseFromString(
+          candidate,
+          "text/html"
+        );
+
+
+    /*
+      Critical UI controls
+      must still exist.
+    */
+
+    if (
+      !parsed.getElementById(
+        "messageInput"
+      )
+    ) {
+
+      return {
+
+        ok: false,
+
+        message:
+          "The change would remove the message input."
+
+      };
+
+    }
+
+
+    if (
+      !parsed.getElementById(
+        "sendButton"
+      )
+    ) {
+
+      return {
+
+        ok: false,
+
+        message:
+          "The change would remove the send button."
+
+      };
+
+    }
+
+
+    /*
+      Parse every inline script
+      WITHOUT executing it.
+    */
+
+    const scripts =
+      [
+        ...parsed.querySelectorAll(
+          "script:not([src])"
+        )
+      ];
+
+
+    for (
+      const script
+      of scripts
+    ) {
+
+      const code =
+        script.textContent.trim();
+
+
+      if (
+        !code
+      ) {
+        continue;
+      }
+
+
+      try {
+
+        new Function(
+          code
+        );
+
+      }
+
+      catch (error) {
+
+        return {
+
+          ok: false,
+
+          message:
+            "JavaScript syntax error: " +
+            error.message
+
+        };
+
+      }
+
+    }
+
+
+    return {
+
+      ok: true,
+
+      message:
+        "HTML and JavaScript syntax checks passed."
+
+    };
+
+  }
+
+  catch (error) {
+
+    return {
+
+      ok: false,
+
+      message:
+        error.message
+
+    };
+
+  }
+
+}
+
+
+/* --------------------------------
+   VALIDATE PROPOSAL
+-------------------------------- */
+
+function jarvisValidatePatch(
+  source,
+  patch
+) {
+
+  if (
+    patch.find.length >
+    5000
+  ) {
+
+    return {
+
+      ok: false,
+
+      message:
+        "The requested patch is too large."
+
+    };
+
+  }
+
+
+  if (
+    patch.replace.length >
+    7000
+  ) {
+
+    return {
+
+      ok: false,
+
+      message:
+        "The replacement is too large."
+
+    };
+
+  }
+
+
+  const matches =
+    jarvisCountMatches(
+      source,
+      patch.find
+    );
+
+
+  if (
+    matches !== 1
+  ) {
+
+    return {
+
+      ok: false,
+
+      message:
+        "The FIND block occurs " +
+        matches +
+        " times. Exactly one match is required."
+
+    };
+
+  }
+
+
+  /*
+    Do not allow secrets to
+    be inserted into public code.
+  */
+
+  const forbidden = [
+
+    "github_pat_",
+    "ghp_",
+    "BEGIN PRIVATE KEY",
+    "BEGIN RSA PRIVATE KEY"
+
+  ];
+
+
+  if (
+    forbidden.some(
+      value =>
+        patch.replace.includes(
+          value
+        )
+    )
+  ) {
+
+    return {
+
+      ok: false,
+
+      message:
+        "The patch appears to contain a private credential."
+
+    };
+
+  }
+
+
+  const candidate =
+    source.replace(
+      patch.find,
+      patch.replace
+    );
+
+
+  const syntax =
+    jarvisValidateCandidate(
+      candidate
+    );
+
+
+  return {
+
+    ...syntax,
+
+    candidate
+
+  };
+
+}
+
+
+/* --------------------------------
+   SECOND AI REVIEW PASS
+-------------------------------- */
+
+async function jarvisReviewPatch(
+  patch
+) {
+
+  const reviewPrompt =
+`
+Review this proposed JavaScript/HTML change.
+
+FIND:
+
+${patch.find}
+
+REPLACEMENT:
+
+${patch.replace}
+
+Look only for obvious bugs,
+invalid JavaScript,
+broken logic,
+or unnecessary complexity.
+
+Reply with one short sentence
+beginning with either:
+
+PASS:
+
+or
+
+CAUTION:
+`;
+
+
+  try {
+
+    return (
+      await jarvisRunDeveloperBrain(
+        reviewPrompt,
+        48
+      )
+    );
+
+  }
+
+  catch (error) {
+
+    return (
+      "CAUTION: Local AI review unavailable."
+    );
+
+  }
+
+}
+
+
+/* --------------------------------
+   CREATE PROPOSAL
+-------------------------------- */
+
+async function jarvisCreateCodeProposal(
+  request
+) {
+
+  const source =
+    await jarvisReadOwnSource();
+
+
+  const context =
+    jarvisDeveloperContext(
+      source,
+      request
+    );
+
+
+  const prompt =
+`
+USER REQUEST:
+
+${request}
+
+
+SOURCE EXCERPT:
+
+${context}
+
+
+Create ONE small source-code change.
+
+Return EXACTLY this format:
+
+
+SUMMARY_START
+one short description
+SUMMARY_END
+
+FIND_START
+exact source text to replace
+FIND_END
+
+REPLACE_START
+replacement source text
+REPLACE_END
+
+
+Important:
+
+The FIND text MUST be copied
+character-for-character from
+the supplied source.
+
+Do not use markdown fences.
+`;
+
+
+  const raw =
+    await jarvisRunDeveloperBrain(
+      prompt,
+      160
+    );
+
+
+  const patch =
+    jarvisParsePatch(
+      raw
+    );
+
+
+  patch.source =
+    source;
+
+
+  patch.validation =
+    jarvisValidatePatch(
+      source,
+      patch
+    );
+
+
+  if (
+    patch.validation.ok
+  ) {
+
+    patch.review =
+      await jarvisReviewPatch(
+        patch
+      );
+
+  }
+
+  else {
+
+    patch.review =
+      "CAUTION: Review skipped because validation failed.";
+
+  }
+
+
+  return patch;
+
+}
+
+
+/* --------------------------------
+   FORMAT PATCH
+-------------------------------- */
+
+function jarvisPatchText(
+  patch
+) {
+
+  return (
+`FILE: index.html
+
+FIND:
+
+${patch.find}
+
+
+REPLACE WITH:
+
+${patch.replace}`
+  );
+
+}
+
+
+/* --------------------------------
+   SHOW APPROVAL PANEL
+-------------------------------- */
+
+function jarvisShowDeveloperProposal(
+  patch
+) {
+
+  const wrapper =
+    document.createElement(
+      "div"
+    );
+
+
+  wrapper.className =
+    "message jarvis";
+
+
+  const bubble =
+    document.createElement(
+      "div"
+    );
+
+
+  bubble.className =
+    "bubble";
+
+
+  bubble.style.maxWidth =
+    "94%";
+
+
+  const label =
+    document.createElement(
+      "span"
+    );
+
+
+  label.className =
+    "speaker-label";
+
+
+  label.textContent =
+    "JARVIS DEVELOPER";
+
+
+  const title =
+    document.createElement(
+      "div"
+    );
+
+
+  title.textContent =
+    patch.summary;
+
+
+  title.style.marginBottom =
+    "9px";
+
+
+  const validation =
+    document.createElement(
+      "div"
+    );
+
+
+  validation.style.fontSize =
+    "11px";
+
+
+  validation.style.marginBottom =
+    "7px";
+
+
+  validation.style.color =
+    patch.validation.ok
+      ? "var(--success)"
+      : "var(--danger)";
+
+
+  validation.textContent =
+    patch.validation.ok
+      ? "VALIDATED — " +
+        patch.validation.message
+      : "BLOCKED — " +
+        patch.validation.message;
+
+
+  const review =
+    document.createElement(
+      "div"
+    );
+
+
+  review.style.fontSize =
+    "11px";
+
+
+  review.style.color =
+    "var(--muted)";
+
+
+  review.style.marginBottom =
+    "10px";
+
+
+  review.textContent =
+    "CODE REVIEW — " +
+    patch.review;
+
+
+  const details =
+    document.createElement(
+      "details"
+    );
+
+
+  const detailsTitle =
+    document.createElement(
+      "summary"
+    );
+
+
+  detailsTitle.textContent =
+    "VIEW PROPOSED PATCH";
+
+
+  detailsTitle.style.fontSize =
+    "11px";
+
+
+  detailsTitle.style.cursor =
+    "pointer";
+
+
+  const code =
+    document.createElement(
+      "pre"
+    );
+
+
+  code.textContent =
+    jarvisPatchText(
+      patch
+    );
+
+
+  code.style.whiteSpace =
+    "pre-wrap";
+
+
+  code.style.wordBreak =
+    "break-word";
+
+
+  code.style.fontSize =
+    "10px";
+
+
+  code.style.maxHeight =
+    "260px";
+
+
+  code.style.overflow =
+    "auto";
+
+
+  code.style.padding =
+    "10px";
+
+
+  code.style.borderRadius =
+    "8px";
+
+
+  code.style.background =
+    "rgba(0,0,0,0.28)";
+
+
+  details.append(
+    detailsTitle,
+    code
+  );
+
+
+  const controls =
+    document.createElement(
+      "div"
+    );
+
+
+  controls.style.display =
+    "flex";
+
+
+  controls.style.gap =
+    "14px";
+
+
+  controls.style.marginTop =
+    "10px";
+
+
+  const approve =
+    document.createElement(
+      "button"
+    );
+
+
+  approve.className =
+    "mini-button";
+
+
+  approve.textContent =
+    "APPROVE";
+
+
+  approve.style.color =
+    "var(--success)";
+
+
+  approve.disabled =
+    !patch.validation.ok;
+
+
+  const reject =
+    document.createElement(
+      "button"
+    );
+
+
+  reject.className =
+    "mini-button";
+
+
+  reject.textContent =
+    "REJECT";
+
+
+  reject.style.color =
+    "var(--danger)";
+
+
+  approve.addEventListener(
+    "click",
+    async () => {
+
+      if (
+        !patch.validation.ok
+      ) {
+        return;
+      }
+
+
+      localStorage.setItem(
+
+        "jarvisApprovedPatch",
+
+        JSON.stringify({
+
+          find:
+            patch.find,
+
+          replace:
+            patch.replace,
+
+          summary:
+            patch.summary,
+
+          approvedAt:
+            Date.now()
+
+        })
+
+      );
+
+
+      let copied = false;
+
+
+      try {
+
+        await navigator.clipboard
+          .writeText(
+            jarvisPatchText(
+              patch
+            )
+          );
+
+
+        copied = true;
+
+      }
+
+      catch (error) {
+
+        console.log(
+          "Clipboard:",
+          error
+        );
+
+      }
+
+
+      approve.disabled =
+        true;
+
+
+      reject.disabled =
+        true;
+
+
+      jarvisPendingPatch =
+        patch;
+
+
+      addMessage(
+
+        "jarvis",
+
+        copied
+          ? "Modification approved. The validated exact patch has been copied. Secure GitHub write access is not installed yet, so I have not altered the repository."
+          : "Modification approved and stored locally. Secure GitHub write access is not installed yet, so I have not altered the repository."
+
+      );
+
+    }
+
+  );
+
+
+  reject.addEventListener(
+    "click",
+    () => {
+
+      jarvisPendingPatch =
+        null;
+
+
+      approve.disabled =
+        true;
+
+
+      reject.disabled =
+        true;
+
+
+      addMessage(
+        "jarvis",
+        "Modification rejected. No source code was changed."
+      );
+
+    }
+
+  );
+
+
+  controls.append(
+    approve,
+    reject
+  );
+
+
+  bubble.append(
+    label,
+    title,
+    validation,
+    review,
+    details,
+    controls
+  );
+
+
+  wrapper.appendChild(
+    bubble
+  );
+
+
+  conversation.appendChild(
+    wrapper
+  );
+
+
+  conversation.scrollTop =
+    conversation.scrollHeight;
+
+}
+
+
+/* --------------------------------
+   INTERCEPT DEVELOPER COMMANDS
+-------------------------------- */
+
+const jarvisNormalProcessRequest =
+  processRequest;
+
+
+processRequest =
+  async function(
+    text
+  ) {
+
+    if (
+      !jarvisIsDeveloperRequest(
+        text
+      )
+    ) {
+
+      return await
+        jarvisNormalProcessRequest(
+          text
+        );
+
+    }
+
+
+    setSystemState(
+      "THINKING"
+    );
+
+
+    addMessage(
+
+      "jarvis",
+
+      "Developer mode engaged. I am inspecting my source code and preparing one conservative modification."
+
+    );
+
+
+    try {
+
+      const patch =
+        await jarvisCreateCodeProposal(
+          text
+        );
+
+
+      jarvisPendingPatch =
+        patch;
+
+
+      jarvisShowDeveloperProposal(
+        patch
+      );
+
+    }
+
+    catch (error) {
+
+      console.error(
+        "JARVIS Developer:",
+        error
+      );
+
+
+      addMessage(
+
+        "jarvis",
+
+        "Developer mode stopped safely: " +
+        error.message
+
+      );
+
+    }
+
+
+    setSystemState(
+      "READY"
+    );
+
+  };
+
+
+/* --------------------------------
+   ADD DEV BUTTON
+-------------------------------- */
+
+function jarvisInstallDeveloperButton() {
+
+  const row =
+    document.querySelector(
+      ".mini-row"
+    );
+
+
+  if (
+    !row ||
+    document.getElementById(
+      "developerButton"
+    )
+  ) {
+    return;
+  }
+
+
+  const button =
+    document.createElement(
+      "button"
+    );
+
+
+  button.id =
+    "developerButton";
+
+
+  button.className =
+    "mini-button";
+
+
+  button.textContent =
+    "DEV";
+
+
+  button.addEventListener(
+    "click",
+    () => {
+
+      messageInput.value =
+        "developer: ";
+
+
+      messageInput.focus();
+
+    }
+  );
+
+
+  row.appendChild(
+    button
+  );
+
+}
+
+
+window.addEventListener(
+  "load",
+  jarvisInstallDeveloperButton
+);
 
 </script>
 
