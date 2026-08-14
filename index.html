@@ -2731,68 +2731,151 @@ async function jarvisCreateCodeProposal(
     await jarvisReadOwnSource();
 
 
-  const context =
-    jarvisDeveloperContext(
+  /*
+    iPhone-safe Developer Mode.
+
+    Source modifications are created
+    deterministically instead of sending
+    the source back through the 360M model.
+  */
+
+  const normalized =
+    request
+      .replace(/[“”]/g, "\"")
+      .replace(/[‘’]/g, "'");
+
+
+  const quoted = [];
+
+  const quotePattern =
+    /"([^"]+)"|'([^']+)'/g;
+
+
+  let match;
+
+
+  while (
+    (
+      match =
+        quotePattern.exec(
+          normalized
+        )
+    ) !== null
+  ) {
+
+    quoted.push(
+      match[1] ||
+      match[2]
+    );
+
+  }
+
+
+  /*
+    Developer command format:
+
+    developer: replace "old" with "new"
+
+    It also understands:
+
+    developer: change "old" to "new"
+  */
+
+  if (
+    quoted.length < 2
+  ) {
+
+    throw new Error(
+      'For iPhone-safe Developer Mode, tell me exactly what to replace. Example: developer: replace "old text" with "new text".'
+    );
+
+  }
+
+
+  const oldText =
+    quoted[0];
+
+
+  const newText =
+    quoted[1];
+
+
+  if (
+    !oldText.trim()
+  ) {
+
+    throw new Error(
+      "The original text cannot be empty."
+    );
+
+  }
+
+
+  if (
+    oldText === newText
+  ) {
+
+    throw new Error(
+      "The replacement is identical to the original."
+    );
+
+  }
+
+
+  const matches =
+    jarvisCountMatches(
       source,
-      request
+      oldText
     );
 
 
-  const prompt =
-`
-USER REQUEST:
+  if (
+    matches === 0
+  ) {
 
-${request}
-
-
-SOURCE EXCERPT:
-
-${context}
-
-
-Create ONE small source-code change.
-
-Return EXACTLY this format:
-
-
-SUMMARY_START
-one short description
-SUMMARY_END
-
-FIND_START
-exact source text to replace
-FIND_END
-
-REPLACE_START
-replacement source text
-REPLACE_END
-
-
-Important:
-
-The FIND text MUST be copied
-character-for-character from
-the supplied source.
-
-Do not use markdown fences.
-`;
-
-
-  const raw =
-    await jarvisRunDeveloperBrain(
-      prompt,
-      96
+    throw new Error(
+      'I could not find "' +
+      oldText +
+      '" in my source code.'
     );
 
+  }
 
-  const patch =
-    jarvisParsePatch(
-      raw
+
+  if (
+    matches > 1
+  ) {
+
+    throw new Error(
+      'I found "' +
+      oldText +
+      '" ' +
+      matches +
+      " times. I will not guess which occurrence should be modified."
     );
 
+  }
 
-  patch.source =
-    source;
+
+  const patch = {
+
+    summary:
+      'Replace "' +
+      oldText +
+      '" with "' +
+      newText +
+      '"',
+
+    find:
+      oldText,
+
+    replace:
+      newText,
+
+    source:
+      source
+
+  };
 
 
   patch.validation =
@@ -2803,23 +2886,25 @@ Do not use markdown fences.
 
 
   if (
-  patch.validation.ok
-) {
+    patch.validation.ok
+  ) {
 
-  patch.review =
-    "PASS: deterministic syntax and safety checks passed.";
+    patch.review =
+      "PASS: exact-match, syntax, UI and safety checks passed.";
 
-}
+  }
 
-else {
+  else {
 
-  patch.review =
-    "CAUTION: deterministic validation failed.";
+    patch.review =
+      "CAUTION: validation failed.";
 
-}
+  }
 
 
   return patch;
+
+}
 
 }
 
