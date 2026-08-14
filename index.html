@@ -1504,220 +1504,404 @@ if ("caches" in window) {
 
 /* --------------------------------
    JARVIS LOCAL BRAIN
+   iPHONE SAFE VERSION
 -------------------------------- */
 
-let jarvisBrainWorker = null;
+let jarvisBrain = null;
+let jarvisBrainLoading = null;
 
 let jarvisBrainReady = false;
-
 let jarvisBrainBusy = false;
 
-let jarvisBrainResolve = null;
-let jarvisBrainReject = null;
+let jarvisBrainConversation = [];
 
 
-function initializeJarvisBrain() {
+/* --------------------------------
+   LOAD LOCAL MODEL
+-------------------------------- */
 
-  if (jarvisBrainWorker) {
-    return;
+async function initializeJarvisBrain() {
+
+  if (jarvisBrain) {
+    return jarvisBrain;
   }
+
+  if (jarvisBrainLoading) {
+    return jarvisBrainLoading;
+  }
+
+
+  statusText.textContent =
+    "LOADING BRAIN";
+
+  systemLabel.textContent =
+    "STARTING LOCAL ENGINE";
+
+
+  jarvisBrainLoading =
+    (async () => {
+
+      /*
+        Load Transformers.js directly
+        from the main page instead of
+        through a Safari module worker.
+      */
+
+      const transformers =
+        await import(
+          "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0"
+        );
+
+      const pipeline =
+        transformers.pipeline;
+
+
+      statusText.textContent =
+        "LOADING BRAIN";
+
+      systemLabel.textContent =
+        "DOWNLOADING LOCAL MODEL";
+
+
+      /*
+        Important:
+
+        No WebGPU yet.
+
+        We deliberately allow
+        Transformers.js to use its
+        default WASM backend first.
+
+        Once Jarvis works reliably,
+        we'll add GPU acceleration.
+      */
+
+      const brain =
+        await pipeline(
+          "text-generation",
+
+          "onnx-community/Qwen2.5-Coder-0.5B-Instruct",
+
+          {
+
+            dtype: "q4",
+
+            progress_callback:
+              info => {
+
+                console.log(
+                  "JARVIS MODEL:",
+                  info
+                );
+
+
+                if (
+                  typeof info.progress ===
+                  "number"
+                ) {
+
+                  const percent =
+                    Math.round(
+                      info.progress
+                    );
+
+                  statusText.textContent =
+                    "LOADING BRAIN";
+
+                  systemLabel.textContent =
+                    `LOCAL MODEL ${percent}%`;
+
+                }
+
+                else if (
+                  info.status
+                ) {
+
+                  statusText.textContent =
+                    "LOADING BRAIN";
+
+                  systemLabel.textContent =
+                    String(
+                      info.status
+                    ).toUpperCase();
+
+                }
+
+              }
+
+          }
+        );
+
+
+      jarvisBrain =
+        brain;
+
+      jarvisBrainReady =
+        true;
+
+
+      statusText.textContent =
+        "LOCAL";
+
+      systemLabel.textContent =
+        "JARVIS BRAIN ONLINE";
+
+
+      return brain;
+
+    })();
+
 
   try {
 
-    jarvisBrainWorker =
-      new Worker(
-        "./brain-worker.js?v=8",
-        {
-          type: "module"
-        }
-      );
+    return await jarvisBrainLoading;
 
-  } catch (error) {
+  }
+
+  catch (error) {
 
     console.error(
-      "Unable to create JARVIS brain worker:",
+      "JARVIS BRAIN LOAD ERROR:",
       error
     );
+
+
+    jarvisBrainLoading =
+      null;
+
+    jarvisBrain =
+      null;
+
+    jarvisBrainReady =
+      false;
+
+
+    statusText.textContent =
+      "BRAIN ERROR";
+
+    systemLabel.textContent =
+      "LOCAL ENGINE FAILED";
+
 
     throw error;
 
   }
 
-
-  jarvisBrainWorker.onmessage =
-    event => {
-
-      const data =
-        event.data || {};
-
-
-      /* MODEL DOWNLOAD PROGRESS */
-
-      if (
-        data.type === "progress"
-      ) {
-
-        const percent =
-          typeof data.progress === "number"
-            ? Math.round(data.progress)
-            : null;
-
-        statusText.textContent =
-          "LOADING BRAIN";
-
-        systemLabel.textContent =
-          percent !== null
-            ? `LOCAL BRAIN ${percent}%`
-            : "INITIALIZING LOCAL BRAIN";
-
-      }
-
-
-      /* BRAIN READY */
-
-      if (
-        data.type === "ready"
-      ) {
-
-        jarvisBrainReady = true;
-
-        statusText.textContent =
-          "LOCAL";
-
-        systemLabel.textContent =
-          "JARVIS BRAIN ONLINE";
-
-      }
-
-
-      /* RESPONSE */
-
-      if (
-        data.type === "response"
-      ) {
-
-        jarvisBrainBusy = false;
-
-        if (
-          jarvisBrainResolve
-        ) {
-
-          jarvisBrainResolve(
-            data.text
-          );
-
-        }
-
-        jarvisBrainResolve = null;
-        jarvisBrainReject = null;
-
-      }
-
-
-      /* ERROR */
-
-      if (
-        data.type === "error"
-      ) {
-
-        jarvisBrainBusy = false;
-
-        const error =
-          new Error(
-            data.message ||
-            "Unknown local brain error"
-          );
-
-        if (
-          jarvisBrainReject
-        ) {
-
-          jarvisBrainReject(
-            error
-          );
-
-        }
-
-        jarvisBrainResolve = null;
-        jarvisBrainReject = null;
-
-        setSystemState(
-          "READY"
-        );
-
-      }
-
-    };
-
-
-  jarvisBrainWorker.onerror =
-    event => {
-
-      console.error(
-        "JARVIS brain worker failed:",
-        event
-      );
-
-      jarvisBrainBusy = false;
-
-      if (
-        jarvisBrainReject
-      ) {
-
-        jarvisBrainReject(
-          new Error(
-            event.message ||
-            "Brain worker failed to load"
-          )
-        );
-
-      }
-
-      jarvisBrainResolve = null;
-      jarvisBrainReject = null;
-
-      setSystemState(
-        "READY"
-      );
-
-    };
-
 }
 
 
-function askJarvisBrain(text) {
+/* --------------------------------
+   ASK LOCAL JARVIS
+-------------------------------- */
 
-  if (
-    jarvisBrainBusy
-  ) {
+async function askJarvisBrain(text) {
 
-    return Promise.resolve(
-      "I'm still processing the previous request."
+  if (jarvisBrainBusy) {
+
+    return (
+      "I'm still processing " +
+      "the previous request."
     );
 
   }
 
-  initializeJarvisBrain();
 
-  jarvisBrainBusy = true;
+  jarvisBrainBusy =
+    true;
 
-  return new Promise(
-    (resolve, reject) => {
 
-      jarvisBrainResolve =
-        resolve;
+  try {
 
-      jarvisBrainReject =
-        reject;
+    const brain =
+      await initializeJarvisBrain();
 
-      jarvisBrainWorker
-        .postMessage({
-          type: "ask",
-          text: text
-        });
+
+    jarvisBrainConversation.push({
+      role: "user",
+      content: text
+    });
+
+
+    /*
+      Keep memory small enough for
+      mobile inference.
+    */
+
+    if (
+      jarvisBrainConversation.length >
+      8
+    ) {
+
+      jarvisBrainConversation =
+        jarvisBrainConversation.slice(
+          -8
+        );
 
     }
-  );
+
+
+    const messages = [
+
+      {
+
+        role: "system",
+
+        content: `
+You are JARVIS.
+
+You are a personal artificial intelligence
+running locally on the user's device.
+
+You are calm, intelligent, concise,
+technical and capable.
+
+You are also JARVIS's software engineer.
+
+You understand:
+
+HTML
+CSS
+JavaScript
+Progressive Web Apps
+debugging
+software architecture
+code generation
+code review
+
+When asked a normal question,
+answer normally.
+
+When asked to program,
+provide useful and technically correct code.
+
+Do not claim you modified your own files
+unless a developer subsystem confirms
+that the files were actually changed.
+
+Keep answers concise unless more detail
+is requested.
+`
+
+      },
+
+      ...jarvisBrainConversation
+
+    ];
+
+
+    statusText.textContent =
+      "THINKING";
+
+    systemLabel.textContent =
+      "LOCAL INFERENCE";
+
+
+    const output =
+      await brain(
+
+        messages,
+
+        {
+
+          max_new_tokens: 128,
+
+          do_sample: false,
+
+          repetition_penalty: 1.05
+
+        }
+
+      );
+
+
+    let answer = "";
+
+
+    const generated =
+      output?.[0]?.generated_text;
+
+
+    if (
+      Array.isArray(
+        generated
+      )
+    ) {
+
+      answer =
+        generated
+          .at(-1)
+          ?.content || "";
+
+    }
+
+    else if (
+      typeof generated ===
+      "string"
+    ) {
+
+      answer =
+        generated;
+
+    }
+
+
+    if (
+      !answer.trim()
+    ) {
+
+      answer =
+        "I was unable to generate a response.";
+
+    }
+
+
+    jarvisBrainConversation.push({
+
+      role: "assistant",
+
+      content: answer
+
+    });
+
+
+    statusText.textContent =
+      "LOCAL";
+
+    systemLabel.textContent =
+      "JARVIS BRAIN ONLINE";
+
+
+    return answer;
+
+  }
+
+  catch (error) {
+
+    console.error(
+      "JARVIS LOCAL ERROR:",
+      error
+    );
+
+
+    statusText.textContent =
+      "BRAIN ERROR";
+
+    systemLabel.textContent =
+      "LOCAL ENGINE FAILED";
+
+
+    throw error;
+
+  }
+
+  finally {
+
+    jarvisBrainBusy =
+      false;
+
+  }
+
+}
 
 }
 
