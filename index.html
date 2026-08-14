@@ -1756,6 +1756,12 @@ that the files were actually changed.
 
 Keep answers concise unless more detail
 is requested.
+
+Answer normal questions in 1 to 3 sentences.
+
+Never repeat the same sentence or phrase.
+Do not repeat your own name unnecessarily.
+Stop after the question has been answered.
 `
 
       },
@@ -1778,14 +1784,18 @@ is requested.
         messages,
 
         {
+  max_new_tokens: 48,
 
-          max_new_tokens: 64,
+  do_sample: true,
 
-          do_sample: false,
+  temperature: 0.65,
 
-          repetition_penalty: 1.05
+  top_p: 0.90,
 
-        }
+  repetition_penalty: 1.18,
+
+  no_repeat_ngram_size: 3
+}
 
       );
 
