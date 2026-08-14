@@ -1478,30 +1478,6 @@ if ("serviceWorker" in navigator) {
 
 }
 
-
-if ("caches" in window) {
-
-  caches.keys()
-    .then(cacheNames => {
-
-      return Promise.all(
-        cacheNames.map(
-          cacheName =>
-            caches.delete(cacheName)
-        )
-      );
-
-    })
-    .catch(error => {
-      console.log(
-        "Cache cleanup:",
-        error
-      );
-    });
-
-}
-
-
 /* --------------------------------
    JARVIS LOCAL BRAIN
    iPHONE SAFE VERSION
@@ -1580,7 +1556,7 @@ async function initializeJarvisBrain() {
         await pipeline(
           "text-generation",
 
-          "onnx-community/Qwen2.5-Coder-0.5B-Instruct",
+          "onnx-community/SmolLM2-135M-Instruct-ONNX-MHA",
 
           {
 
@@ -1803,7 +1779,7 @@ is requested.
 
         {
 
-          max_new_tokens: 128,
+          max_new_tokens: 64,
 
           do_sample: false,
 
